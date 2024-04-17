@@ -52,7 +52,6 @@ const CreatePen = () => {
       ));
     }
   };
-  console.log('INFO: ', info);
   const renderCustomParameters = () => {
     return selectedVariables.map((variableId) => {
       const variable = info.variables.find(

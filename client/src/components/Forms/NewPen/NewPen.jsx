@@ -17,7 +17,6 @@ const NewPen = ({ messageToast }) => {
     name: '',
     variables: [],
   });
-  console.log('LA DATA:', data);
   const onSubmit = () => {
     let body = {
       ...data,

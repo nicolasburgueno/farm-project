@@ -34,22 +34,24 @@ const CreateMeasurement = () => {
     value: '',
   });
   const [values, setValues] = useState([]);
-  const handleChange = (value, name, granularity) => {
-    setValues([...values, { [name]: value }]);
-    validationNumber(value, name, granularity);
+  const handleChange = (value, name, parameters, type) => {
+    'value q', value;
+    setValues({ ...values, [name]: value });
+    if (type === 'enum') validationEnum(value, name, parameters);
+    if (type === 'number') validationNumber(value, name, parameters);
   };
 
-  const validationNumber = (value, name, granularity) => {
-    console.log(value % granularity !== 0);
-    if (Number(value) % granularity !== 0) {
-      console.log('entre');
+  const validationNumber = (value, name, parameters) => {
+    if (
+      Number(value) % parameters.granularity !== 0 ||
+      Number(value) > parameters.value.max
+    ) {
       setErrors({
         ...errors,
         [name]: {
           message: 'El numero ingresado debe respetar la granularidad',
         },
       });
-      console.log(errors);
     } else {
       if (errors[name]) {
         let newErrors = { ...errors };
@@ -58,14 +60,24 @@ const CreateMeasurement = () => {
       }
     }
   };
-  const validationEnum = (value) => {};
-  // let arr = [];
-  console.log(values);
-  // console.log(
-  //   'valores array',
-  //   Object.values(values).map((e) => arr.push(e))
-  // );
-  // console.log('arr:', arr);
+  const validationEnum = (value, name, parameters) => {
+    if (!parameters.value.includes(value)) {
+      setErrors({
+        ...errors,
+        [name]: {
+          message:
+            'El valor seleccionado tiene que estar entre los valores predefinidos',
+        },
+      });
+    } else {
+      if (errors[name]) {
+        let newErrors = { ...errors };
+        delete newErrors[name];
+        setErrors(newErrors);
+      }
+    }
+  };
+
   //nombre de la vaca o id(opcional)
   useEffect(() => {
     let defaultValues = {};
@@ -76,13 +88,29 @@ const CreateMeasurement = () => {
           defaultValues[prop.variable.name] = '';
         });
         setAttributes(response.data);
-        setValues([defaultValues]);
+        setValues({ ...defaultValues });
       })
       .catch((error) => console.log(error));
   }, [params.id]);
   const onSubmit = () => {
-    console.log(data);
+    let errorsEmpty = validErrors();
+    if (Object.keys(errorsEmpty).length > 0) {
+      setErrors(errorsEmpty);
+    } else {
+      console.log('send form');
+    }
   };
+  function validErrors() {
+    let emptyErrors = { ...errors };
+    Object.keys(values).forEach((prop) => {
+      if (values[prop] === '') {
+        emptyErrors[prop] = {
+          message: 'El campo es requerido',
+        };
+      }
+    });
+    return emptyErrors;
+  }
 
   return (
     <div>
@@ -122,7 +150,8 @@ const CreateMeasurement = () => {
                         ? parseFloat(value)
                         : prop.custom_parameters.value.min,
                       prop.variable.name,
-                      prop.custom_parameters.granularity
+                      prop.custom_parameters,
+                      prop.variable.type
                     )
                   }
                   step={prop.custom_parameters.granularity}
@@ -147,7 +176,8 @@ const CreateMeasurement = () => {
                     handleChange(
                       value,
                       prop.variable.name,
-                      prop.custom_parameters.granularity
+                      prop.custom_parameters,
+                      prop.variable.type
                     )
                   }
                   step={prop.custom_parameters.granularity}
@@ -174,11 +204,18 @@ const CreateMeasurement = () => {
             </FormControl>
           )}
           {prop.variable.type == 'enum' && (
-            <FormControl>
+            <FormControl isInvalid={!!errors[prop.variable.name]}>
               <FormLabel>{prop.variable.name}:</FormLabel>
               <RadioGroup
                 defaultValue=""
-                onChange={(value) => handleChange(value, prop.variable.name)}
+                onChange={(value) =>
+                  handleChange(
+                    value,
+                    prop.variable.name,
+                    prop.custom_parameters,
+                    prop.variable.type
+                  )
+                }
               >
                 <HStack spacing="1rem">
                   <Wrap>
@@ -187,9 +224,18 @@ const CreateMeasurement = () => {
                         {v}
                       </Radio>
                     ))}
+                    <Radio name="cualquiera" value="cualquiera">
+                      Cualquiera
+                    </Radio>
                   </Wrap>
                 </HStack>
               </RadioGroup>
+              <FormErrorMessage
+                fontWeight={'bold'}
+                textShadow={'0.4px 0.4px black'}
+              >
+                {errors[prop.variable.name]?.message.toUpperCase()}
+              </FormErrorMessage>
             </FormControl>
           )}
           {prop.variable.type == 'bolean' && (
